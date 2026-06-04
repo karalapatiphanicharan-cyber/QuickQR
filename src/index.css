@@ -7,33 +7,41 @@
     --background: 12 19 36;
     --foreground: 220 225 251;
   }
+
+  body {
+    @apply bg-[#0c1324] text-[#dce1fb] min-h-screen selection:bg-primary/30;
+  }
 }
 
 .glass-card {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-card:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 0 40px rgba(173, 198, 255, 0.15);
+  border-color: rgba(173, 198, 255, 0.3);
+  box-shadow: 0 0 40px rgba(173, 198, 255, 0.1);
+  transform: translateY(-2px);
 }
 
 .aurora-blur {
   position: absolute;
-  filter: blur(100px);
+  filter: blur(120px);
   z-index: -1;
-  opacity: 0.4;
   border-radius: 50%;
 }
 
-@keyframes pulse-glow {
-  0%, 100% { filter: drop-shadow(0 0 15px rgba(173, 198, 255, 0.2)); }
-  50% { filter: drop-shadow(0 0 45px rgba(173, 198, 255, 0.6)); }
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
 }
 
-.qr-pulse {
-  animation: pulse-glow 4s infinite ease-in-out;
+.floating {
+  animation: float 4s ease-in-out infinite;
+}
+
+.qr-glow {
+  filter: drop-shadow(0 0 15px rgba(173, 198, 255, 0.3));
 }

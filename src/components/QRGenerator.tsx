@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { generateQRCode } from '../lib/qr';
-import { validateUrl, formatFileSize } from '../utils/fileHelpers';
+import { validateUrl } from '../utils/fileHelpers';
 import { Button } from './ui/Button';
 import { Input, Textarea } from './ui/Input';
 import { Tabs } from './ui/Tabs';
-import { QrCode, Link as LinkIcon, FileText, Image as ImageIcon, Download, Maximize, Upload, RefreshCw, X } from 'lucide-react';
+import { QrCode, Link as LinkIcon, Download, Maximize, X } from 'lucide-react';
 import { toPng } from 'html-to-image';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const QR_SIZES = [256, 512, 768, 1024];
 
@@ -14,14 +15,12 @@ export const QRGenerator: React.FC = () => {
   const [text, setText] = useState('');
   const [url, setUrl] = useState('');
   const [urlError, setUrlError] = useState('');
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const [qrColor, setQrColor] = useState('#adc6ff');
   const [bgColor, setBgColor] = useState('#0c1324');
   const [size, setSize] = useState(512);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const qrRef = useRef<HTMLDivElement>(null);
 
@@ -34,31 +33,13 @@ export const QRGenerator: React.FC = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'pdf' | 'image') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (type === 'pdf') {
-      setPdfFile(file);
-    } else {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   useEffect(() => {
     const updateQR = async () => {
       let content = '';
       if (activeTab === 'text') content = text;
       else if (activeTab === 'url') content = url;
-      else if (activeTab === 'pdf') content = pdfFile ? `PDF: ${pdfFile.name}` : '';
-      else if (activeTab === 'image') content = imageFile ? `Image: ${imageFile.name}` : '';
 
-      if (content) {
+      if (content && (activeTab !== 'url' || !urlError)) {
         try {
           const dataUrl = await generateQRCode({
             text: content,
@@ -76,12 +57,12 @@ export const QRGenerator: React.FC = () => {
     };
 
     updateQR();
-  }, [activeTab, text, url, pdfFile, imageFile, qrColor, bgColor, size]);
+  }, [activeTab, text, url, urlError, qrColor, bgColor, size]);
 
   const handleDownload = async () => {
-    if (!qrRef.current) return;
+    if (!qrRef.current || !qrDataUrl) return;
     try {
-      const dataUrl = await toPng(qrRef.current, { cacheBust: true });
+      const dataUrl = await toPng(qrRef.current, { cacheBust: true, width: size, height: size });
       const link = document.createElement('a');
       link.download = `quickqr-${Date.now()}.png`;
       link.href = dataUrl;
@@ -91,8 +72,21 @@ export const QRGenerator: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFullscreen(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
   return (
-    <section className="max-w-7xl mx-auto px-6 mb-24">
+    <motion.section
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="max-w-7xl mx-auto px-6 mb-24"
+    >
       <div className="glass-card rounded-[32px] overflow-hidden grid lg:grid-cols-[1fr_400px]">
         {/* Left Panel: Controls */}
         <div className="p-8 lg:p-12 border-r border-white/10">
@@ -102,8 +96,6 @@ export const QRGenerator: React.FC = () => {
               tabs={[
                 { id: 'text', label: 'Text', icon: <QrCode size={18} /> },
                 { id: 'url', label: 'URL', icon: <LinkIcon size={18} /> },
-                { id: 'pdf', label: 'PDF', icon: <FileText size={18} /> },
-                { id: 'image', label: 'Image', icon: <ImageIcon size={18} /> },
               ]}
               activeTab={activeTab}
               onChange={setActiveTab}
@@ -111,89 +103,42 @@ export const QRGenerator: React.FC = () => {
           </div>
 
           <div className="space-y-8">
-            {/* Input Content */}
-            {activeTab === 'text' && (
-              <div className="space-y-4">
-                <label className="block text-xs font-mono text-primary uppercase tracking-widest">Input Text</label>
-                <Textarea
-                  placeholder="Enter the text message here..."
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                />
-              </div>
-            )}
+            <AnimatePresence mode="wait">
+              {activeTab === 'text' ? (
+                <motion.div
+                  key="text"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="space-y-4"
+                >
+                  <label className="block text-xs font-mono text-primary uppercase tracking-widest">Input Text</label>
+                  <Textarea
+                    placeholder="Enter the text message here..."
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="url"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="space-y-4"
+                >
+                  <label className="block text-xs font-mono text-primary uppercase tracking-widest">Website URL</label>
+                  <Input
+                    placeholder="https://example.com"
+                    type="url"
+                    value={url}
+                    onChange={(e) => handleUrlChange(e.target.value)}
+                  />
+                  {urlError && <p className="text-red-400 text-sm">{urlError}</p>}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {activeTab === 'url' && (
-              <div className="space-y-4">
-                <label className="block text-xs font-mono text-primary uppercase tracking-widest">Website URL</label>
-                <Input
-                  placeholder="https://example.com"
-                  type="url"
-                  value={url}
-                  onChange={(e) => handleUrlChange(e.target.value)}
-                />
-                {urlError && <p className="text-red-400 text-sm">{urlError}</p>}
-              </div>
-            )}
-
-            {activeTab === 'pdf' && (
-              <div className="space-y-4">
-                <label className="block text-xs font-mono text-primary uppercase tracking-widest">PDF Document</label>
-                {!pdfFile ? (
-                  <label className="border-2 border-dashed border-white/10 rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-white/5 flex flex-col items-center gap-2">
-                    <Upload className="text-foreground/40" size={32} />
-                    <p className="text-foreground/60">Click to upload or drag and drop PDF</p>
-                    <input type="file" accept="application/pdf" className="hidden" onChange={(e) => handleFileChange(e, 'pdf')} />
-                  </label>
-                ) : (
-                  <div className="bg-surface-container p-4 rounded-xl border border-white/10 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <FileText className="text-primary" />
-                      <div>
-                        <p className="text-sm font-medium truncate max-w-[200px]">{pdfFile.name}</p>
-                        <p className="text-xs text-foreground/50">{formatFileSize(pdfFile.size)}</p>
-                      </div>
-                    </div>
-                    <button onClick={() => setPdfFile(null)} className="text-foreground/40 hover:text-red-400">
-                      <X size={20} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'image' && (
-              <div className="space-y-4">
-                <label className="block text-xs font-mono text-primary uppercase tracking-widest">Visual Asset</label>
-                {!imageFile ? (
-                  <label className="border-2 border-dashed border-white/10 rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-white/5 flex flex-col items-center gap-2">
-                    <ImageIcon className="text-foreground/40" size={32} />
-                    <p className="text-foreground/60">Upload image (PNG, JPG, SVG)</p>
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e, 'image')} />
-                  </label>
-                ) : (
-                  <div className="space-y-4">
-                    {imagePreview && (
-                      <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-white/10">
-                        <img src={imagePreview} alt="Preview" className="w-full h-full object-contain bg-black/20" />
-                        <button
-                          onClick={() => { setImageFile(null); setImagePreview(null); }}
-                          className="absolute top-2 right-2 p-1.5 bg-black/50 backdrop-blur-md rounded-lg text-white hover:bg-red-500/50 transition-colors"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between text-sm text-foreground/60 px-2">
-                      <span>{imageFile.name}</span>
-                      <span>{formatFileSize(imageFile.size)}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Customization */}
             <div className="pt-8 border-t border-white/5 grid grid-cols-2 gap-8">
               <div className="space-y-4">
                 <label className="block text-xs font-mono text-foreground/50 uppercase">QR Color</label>
@@ -202,7 +147,7 @@ export const QRGenerator: React.FC = () => {
                     type="color"
                     value={qrColor}
                     onChange={(e) => setQrColor(e.target.value)}
-                    className="w-10 h-10 bg-transparent cursor-pointer rounded"
+                    className="w-10 h-10 bg-transparent cursor-pointer rounded border-none"
                   />
                   <span className="text-sm font-mono">{qrColor}</span>
                 </div>
@@ -214,7 +159,7 @@ export const QRGenerator: React.FC = () => {
                     type="color"
                     value={bgColor}
                     onChange={(e) => setBgColor(e.target.value)}
-                    className="w-10 h-10 bg-transparent cursor-pointer rounded"
+                    className="w-10 h-10 bg-transparent cursor-pointer rounded border-none"
                   />
                   <span className="text-sm font-mono">{bgColor}</span>
                 </div>
@@ -230,7 +175,7 @@ export const QRGenerator: React.FC = () => {
                     onClick={() => setSize(s)}
                     className={`py-2 rounded-lg text-sm font-mono transition-all ${
                       size === s
-                        ? 'bg-primary/20 text-primary border border-primary/50'
+                        ? 'bg-primary text-on-primary shadow-[0_0_15px_rgba(173,198,255,0.4)]'
                         : 'bg-white/5 text-foreground/40 border border-white/5 hover:border-white/20'
                     }`}
                   >
@@ -249,15 +194,25 @@ export const QRGenerator: React.FC = () => {
             <p className="text-sm text-foreground/40">Updates automatically</p>
           </div>
 
-          <div className="relative group">
-            <div className="absolute -inset-4 bg-primary/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <motion.div
+            className="relative group"
+            animate={{ y: [0, -10, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <div className="absolute -inset-4 bg-primary/20 blur-2xl rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
             <div
               ref={qrRef}
-              className="relative w-64 h-64 lg:w-80 lg:h-80 glass-card rounded-[24px] p-6 flex items-center justify-center shadow-2xl"
+              className="relative w-64 h-64 lg:w-80 lg:h-80 glass-card rounded-[24px] p-6 flex items-center justify-center bg-white shadow-2xl qr-glow"
               style={{ backgroundColor: bgColor }}
             >
               {qrDataUrl ? (
-                <img src={qrDataUrl} alt="QR Code" className="w-full h-full qr-pulse" />
+                <motion.img
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  src={qrDataUrl}
+                  alt="QR Code"
+                  className="w-full h-full"
+                />
               ) : (
                 <div className="flex flex-col items-center gap-4 text-foreground/20">
                   <QrCode size={64} strokeWidth={1} />
@@ -265,24 +220,58 @@ export const QRGenerator: React.FC = () => {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
 
           <div className="w-full space-y-4">
             <Button
-              className="w-full gap-2"
+              className="w-full gap-2 hover:scale-[1.02] active:scale-[0.98]"
               disabled={!qrDataUrl}
               onClick={handleDownload}
             >
               <Download size={20} />
               Download PNG
             </Button>
-            <Button variant="secondary" className="w-full gap-2" disabled={!qrDataUrl}>
+            <Button
+              variant="secondary"
+              className="w-full gap-2 hover:scale-[1.02] active:scale-[0.98]"
+              disabled={!qrDataUrl}
+              onClick={() => setIsFullscreen(true)}
+            >
               <Maximize size={20} />
               View Fullscreen
             </Button>
           </div>
         </div>
       </div>
-    </section>
+
+      <AnimatePresence>
+        {isFullscreen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md"
+            onClick={() => setIsFullscreen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-2xl w-full aspect-square glass-card p-8 rounded-[32px] flex items-center justify-center"
+              style={{ backgroundColor: bgColor }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setIsFullscreen(false)}
+                className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+              >
+                <X size={24} />
+              </button>
+              <img src={qrDataUrl} alt="QR Code Fullscreen" className="w-full h-full qr-glow" />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.section>
   );
 };
