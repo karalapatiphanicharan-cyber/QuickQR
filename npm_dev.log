@@ -2,9 +2,10 @@
 > quickqr@0.0.0 dev
 > vite
 
+Re-optimizing dependencies because lockfile has changed
 
-  VITE v5.4.21  ready in 406 ms
+  VITE v5.4.21  ready in 319 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
-7:24:42 AM [vite] hmr update /src/components/QRGenerator.tsx, /src/index.css
+7:53:41 AM [vite] hmr update /src/components/ui/Button.tsx, /src/index.css

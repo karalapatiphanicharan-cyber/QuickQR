@@ -14,7 +14,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         type={type}
         className={cn(
-          "flex w-full bg-surface-container-highest border border-white/10 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:outline-none text-foreground placeholder:text-foreground/50 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex w-full bg-[#0F172A] border border-white/10 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:outline-none text-white placeholder:text-[#94A3B8] disabled:cursor-not-allowed disabled:opacity-50 transition-all",
           className
         )}
         ref={ref}
@@ -31,7 +31,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <textarea
         className={cn(
-          "flex w-full bg-surface-container-highest border border-white/10 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:outline-none text-foreground placeholder:text-foreground/50 disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px]",
+          "flex w-full bg-[#0F172A] border border-white/10 rounded-xl p-4 focus:ring-2 focus:ring-primary focus:outline-none text-white placeholder:text-[#94A3B8] disabled:cursor-not-allowed disabled:opacity-50 min-h-[120px] transition-all",
           className
         )}
         ref={ref}
